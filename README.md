@@ -18,4 +18,4 @@ Node backend
 3. From within the unarchived folder run:
 
 	    npm install
-	    PORT=*some_port* node app
+	    PORT=<port> node app
