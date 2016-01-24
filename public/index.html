@@ -1,0 +1,19 @@
+<html ng-app="beerXprtApp">
+    <head>
+        <title>BeerXprt</title>
+        <link rel="stylesheet" href="stylesheets/style.css"/>
+        <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+    </head>
+    <body>
+        <h1>Hey, you want a beer? Try this one:</h1>
+
+        <div ng-controller="BeerXprtController">
+            <img src={{imgUrl}} class="product-img"/><br/>
+            <span class="product-name">{{name}}</span>
+        </div>
+
+        <script src="js/beerXprtApp.js"></script>
+        <script src="js/beerXprtController.js"></script>
+        <script src="js/beerXprtService.js"></script>
+    </body>
+</html>
