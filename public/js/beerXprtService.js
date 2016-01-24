@@ -14,4 +14,12 @@ app.service('BeerXprtService', function ($http) {
             callback(error, null);
         });
     };
+
+    this.resetUsedBeers = function(callback){
+        $http.delete('/beers/used').then(function (response) {
+            callback(null, response);
+        }, function (error) {
+            callback(error, null);
+        });
+    }
 });

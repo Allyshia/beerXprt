@@ -1,6 +1,7 @@
 <html ng-app="beerXprtApp">
     <head>
         <title>BeerXprt</title>
+        <link rel="stylesheet" href="lib/bootstrap-3.3.6-dist/css/bootstrap.min.css"/>
         <link rel="stylesheet" href="stylesheets/style.css"/>
         <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
     </head>
@@ -9,7 +10,9 @@
 
         <div ng-controller="BeerXprtController">
             <img src={{imgUrl}} class="product-img"/><br/>
-            <span class="product-name">{{name}}</span>
+            <span class="product-name">{{name}}</span><br/><br/>
+            <button ng-click="resetUsedBeers()">Reset Used Beers</button>&nbsp;&nbsp;&nbsp;
+            <span>{{resetMessage}}</span>
         </div>
 
         <script src="js/beerXprtApp.js"></script>
