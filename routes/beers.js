@@ -10,9 +10,11 @@ var request = require('request');
 var querystring = require('querystring');
 var _ = require('lodash');
 var url = require('url');
+var moment = require('moment');
 
 var storage = require('../lib/storage');
 var baseURL = '/products';
+var BEERS_STORAGE = 'beers.json';
 var USED_BEERS_STORAGE = 'usedBeers.txt';
 
 /**
@@ -66,11 +68,58 @@ router.delete('/used', function (req, res) {
  * @param {Object} data Data to be bubbled up (if no error)
  */
 
+
 /**
- * Get all products listed at a given store
+ * Get all beers listed at a given store
  * @param {errorFirstCallback} callback Callback function passing either an error or an array of beers
  */
 var getBeers = function (callback) {
+    // Only load the full product list once per day
+    var m = moment(storage.getLastModifiedDate(BEERS_STORAGE));
+    var today = moment().hour(0).minute(0).second(0).millisecond(0);
+
+    if (m.isBefore(today)) {
+        fetchBeers(function (error, beers) {
+            if (error) {
+                callback(error, null);
+            }
+            else {
+                cacheBeers(beers);
+                callback(null, beers);
+            }
+        });
+    }
+    else {
+        loadBeersFromCache(function (error, beers) {
+            if (error) {
+                callback(error, null);
+            }
+            else {
+                // Check for empty cache first
+                if (beers === '') {
+                    fetchBeers(function (error, beers) {
+                        if (error) {
+                            callback(error, null);
+                        }
+                        else {
+                            cacheBeers(beers);
+                            callback(null, beers);
+                        }
+                    });
+                }
+                else {
+                    callback(null, beers);
+                }
+            }
+        });
+    }
+};
+
+/**
+ * Fetch all beers listed at a given store from the LCBO API
+ * @param {errorFirstCallback} callback Callback function passing either an error or an array of beers
+ */
+var fetchBeers = function (callback) {
     var obj = {
         val: "get the beers from lcbo",
         key: config.api_key
@@ -123,8 +172,7 @@ var getBeers = function (callback) {
                 return item.primary_category === 'Beer'
             }));
 
-            if (totalPages > 1)
-            {
+            if (totalPages > 1) {
                 getNextPage(nextPageCallback);
             }
             else {
@@ -152,6 +200,30 @@ var getBeers = function (callback) {
             callback(null, beers);
         }
     }
+};
+
+/**
+ * Store an array of beers
+ * @param beers Array of beers to store
+ * @param {errorFirstCallback} callback Callback function passing an optional error object
+ */
+var cacheBeers = function (beers, callback) {
+    storage.replaceContents(BEERS_STORAGE, JSON.stringify(beers), callback);
+};
+
+/**
+ * Fetch already loaded beers from cache
+ * @param {errorFirstCallback} callback Callback function passing either an error object or a list of beers
+ */
+var loadBeersFromCache = function (callback) {
+    storage.read(BEERS_STORAGE, function(error, data){
+        if(error){
+            callback(error, null);
+        }
+        else{
+            callback(null, JSON.parse(data));
+        }
+    });
 };
 
 /**
@@ -224,7 +296,7 @@ var readUsedBeers = function (callback) {
  * Clear all chosen beers from the list
  * @param {errorFirstCallback} callback Callback function passing either an optional error object
  */
-var deleteAllUsed = function(callback){
+var deleteAllUsed = function (callback) {
     storage.clear(USED_BEERS_STORAGE, callback);
 };
 
