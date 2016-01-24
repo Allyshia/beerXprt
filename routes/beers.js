@@ -4,18 +4,17 @@
 
 var express = require('express');
 var router = express.Router();
-
-var config = require('../config/app-config.json');
 var request = require('request');
 var querystring = require('querystring');
 var _ = require('lodash');
 var url = require('url');
 var moment = require('moment');
 
+var config = require('../config/app-config.json');
 var storage = require('../lib/storage');
-var baseURL = '/products';
-var BEERS_STORAGE = 'beers.json';
-var USED_BEERS_STORAGE = 'usedBeers.txt';
+
+var BEERS_STORAGE = config.storage_beers;
+var USED_BEERS_STORAGE = config.storage_used_beers;
 
 /**
  * GET all beers
@@ -40,6 +39,9 @@ router.get('/next', function (req, res) {
         if (error) {
             console.log("error getting next beer: " + error);
             res.status(500).send(error);
+        }
+        else if (beer === null) {
+            res.status(404).json({error: "There are no beers left to choose from."});
         }
         else {
             res.json({beer: beer});
@@ -96,7 +98,7 @@ var getBeers = function (callback) {
             }
             else {
                 // Check for empty cache first
-                if (beers === '') {
+                if (beers.length === 0) {
                     fetchBeers(function (error, beers) {
                         if (error) {
                             callback(error, null);
@@ -127,8 +129,8 @@ var fetchBeers = function (callback) {
 
     var query = {
         per_page: config.max_results_per_page,
-        store_id: config.store_id
-        //where_not: 'is_dead,is_discontinued'
+        store_id: config.store_id,
+        where_not: 'is_dead,is_discontinued'
     };
 
     var beers = [];
@@ -136,7 +138,7 @@ var fetchBeers = function (callback) {
     var totalPages = 0;
 
     var getFirstPage = function (callback) {
-        var serviceURL = config.api_url + baseURL + '?' + querystring.stringify(query);
+        var serviceURL = config.api_url + config.api_path_products + '?' + querystring.stringify(query);
         console.log("getting first page: " + serviceURL);
         request.get({
             url: serviceURL,
@@ -149,7 +151,7 @@ var fetchBeers = function (callback) {
     var getNextPage = function (callback) {
         pageNum++;
         //console.log("getting page: " + pageNum);
-        var serviceURL = config.api_url + baseURL + '?' + querystring.stringify(query) + '&page=' + pageNum;
+        var serviceURL = config.api_url + config.api_path_products + '?' + querystring.stringify(query) + '&page=' + pageNum;
         //console.log("getting page: " + serviceURL);
         request.get({
             url: serviceURL,
@@ -176,7 +178,6 @@ var fetchBeers = function (callback) {
                 getNextPage(nextPageCallback);
             }
             else {
-                console.log("ONLY ONE PAGE");
                 callback(null, beers);
             }
         } else {
@@ -208,20 +209,27 @@ var fetchBeers = function (callback) {
  * @param {errorFirstCallback} callback Callback function passing an optional error object
  */
 var cacheBeers = function (beers, callback) {
-    storage.replaceContents(BEERS_STORAGE, JSON.stringify(beers), callback);
+    storage.store(BEERS_STORAGE, JSON.stringify(beers), callback);
 };
 
 /**
- * Fetch already loaded beers from cache
+ * Fetch master beer list from cache
  * @param {errorFirstCallback} callback Callback function passing either an error object or a list of beers
  */
 var loadBeersFromCache = function (callback) {
-    storage.read(BEERS_STORAGE, function(error, data){
-        if(error){
+    storage.read(BEERS_STORAGE, function (error, data) {
+        if (error) {
             callback(error, null);
         }
-        else{
-            callback(null, JSON.parse(data));
+        else {
+            var beers;
+            try {
+                beers = JSON.parse(data);
+                callback(null, beers);
+            }
+            catch (e) {
+                callback(null, []);
+            }
         }
     });
 };
@@ -237,7 +245,7 @@ var getNextBeer = function (callback) {
             callback(error, null);
         }
         else {
-            readUsedBeers(function (usedErr, usedData) {
+            getUsedBeers(function (usedErr, usedData) {
                 if (usedErr) {
                     callback(usedErr, null);
                 }
@@ -251,13 +259,37 @@ var getNextBeer = function (callback) {
                         });
                     }
                     console.log("NUM BEERS AFTER REMOVAL : " + beers.length);
-                    var choice = Math.floor(Math.random() * beers.length);
-                    console.log("choice :" + choice);
 
-                    var chosen = beers[choice];
+                    chooseBeer(beers, callback);
+                }
+            });
+        }
+    });
+};
 
+/**
+ * Choose the next beer at random from the list of pre-processed never-before selected beers - keep selecting until we hit a beer that is in inventory
+ * @param beers List of pre-processed beers with the already-chosen beers removed
+ * @param callback Callback function that passes an optional error object and the selected beer
+ */
+var chooseBeer = function (beers, callback) {
+    if (beers.length === 0) {
+        callback(null, null);
+    }
+    else {
+        var choice = Math.floor(Math.random() * beers.length);
+        console.log("choice :" + choice);
+
+        var chosen = beers[choice];
+
+        checkInventory(config.store_id, chosen.id, function (error, isInInventory) {
+            if (error) {
+                callback(error, null);
+            }
+            else {
+                if (isInInventory) {
                     // Save used beer -- TODO allow skip
-                    saveBeer(chosen.id, function (saveErr) {
+                    saveUsedBeer(chosen.id, function (saveErr) {
                         if (saveErr) {
                             callback(saveErr, null);
                         }
@@ -266,7 +298,52 @@ var getNextBeer = function (callback) {
                         }
                     });
                 }
-            });
+                else {
+                    // Try again
+                    _.remove(beers, function (item) {
+                        if (item.id === chosen.id) {
+                            console.log("removing because of lack of inventory: " + item.id);
+                        }
+                        return item.id === chosen.id;
+                    });
+                    chooseBeer(beers, callback);
+                }
+            }
+        });
+    }
+};
+
+/**
+ * Check inventory for a particular store, for a particular product
+ *
+ * @param storeId Id of the store to check
+ * @param productId Id of the product to check for
+ * @param callback Callback function passing an optional error object and a boolean value (true if the product is in inventory at that store)
+ */
+var checkInventory = function (storeId, productId, callback) {
+    var serviceURL = config.api_url + config.api_path_stores + '/' + storeId + config.api_path_products + '/' + productId + config.api_path_inventory;
+    request.get({
+        url: serviceURL,
+        headers: {
+            'Authorization': 'Token ' + config.api_key
+        }
+    }, function (error, response, body) {
+        if (error) {
+            callback(error, null);
+        }
+        else {
+            try {
+                var json = JSON.parse(body);
+                if(json.result.quantity === 0){
+                    callback(null, false);
+                }
+                else{
+                    callback(null, true);
+                }
+            }
+            catch (e) {
+                callback(e, null);
+            }
         }
     });
 };
@@ -276,24 +353,47 @@ var getNextBeer = function (callback) {
  * @param {string} id Id of the beer to save to the 'used' beers file
  * @param {errorFirstCallback} callback Callback function passing an optional error object
  */
-var saveBeer = function (id, callback) {
-    storage.store(USED_BEERS_STORAGE, id, callback);
+var saveUsedBeer = function (id, callback) {
+    getUsedBeers(function (error, data) {
+        if (error) {
+            // If error getting used beers, just override
+            storage.store(USED_BEERS_STORAGE, JSON.stringify([id]), callback);
+        }
+        else {
+            data.push(id);
+            storage.store(USED_BEERS_STORAGE, JSON.stringify(data), callback);
+        }
+    });
 };
 
 /**
  * Read list of already chosen beers
  * @param {errorFirstCallback} callback Callback function passing either an error object or the list of used beers
  */
-var readUsedBeers = function (callback) {
+var getUsedBeers = function (callback) {
     //if(!storage.fileExists(USED_BEERS_STORAGE)){ // TODO
     //    callback(null, []);
     //}
 
-    storage.readLines(USED_BEERS_STORAGE, callback);
+    storage.read(USED_BEERS_STORAGE, function (error, data) {
+        if (error) {
+            callback(error, null);
+        }
+        else {
+            var beers;
+            try {
+                beers = JSON.parse(data);
+                callback(null, beers);
+            }
+            catch (e) {
+                callback(null, []);
+            }
+        }
+    });
 };
 
 /**
- * Clear all chosen beers from the list
+ * Clear all chosen beers from the stored list
  * @param {errorFirstCallback} callback Callback function passing either an optional error object
  */
 var deleteAllUsed = function (callback) {
@@ -301,5 +401,3 @@ var deleteAllUsed = function (callback) {
 };
 
 module.exports = router;
-
-// TODO potential value-add: prioritize seasonal or on sale

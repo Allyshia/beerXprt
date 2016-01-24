@@ -1,6 +1,12 @@
 {
     "api_url": "http://lcboapi.com",
+    "api_path_inventory": "/inventory",
+    "api_path_products": "/products",
+    "api_path_stores": "/stores",
     "api_key": "MDowYzY0ZTIyMi1iZDRhLTExZTUtYmU0Yi04M2FkMzMyNzJjMTY6NndPeGplMFY4b1U5MWJYSDYxWjNnVzF6eG1wZ2VyRzZmaE1x",
     "store_id": 511,
-    "max_results_per_page": 100
+    "max_results_per_page": 100,
+    "storage_beers": "beers.json",
+    "storage_used_beers": "usedBeers.json",
+    "efficiency_mode": true
 }
