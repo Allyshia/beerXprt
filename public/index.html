@@ -17,6 +17,12 @@
         &nbsp;&nbsp;&nbsp;
         <span>{{resetMessage}}</span>
     </div>
+    <div>
+        <p>Last beers:</p>
+        <div ng-repeat="n in lastUsed">
+            {{n}}
+        </div>
+    </div>
 </div>
 <script src="js/beerXprtApp.js"></script>
 <script src="js/beerXprtController.js"></script>

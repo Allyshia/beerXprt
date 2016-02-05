@@ -1,6 +1,7 @@
 app.controller('BeerXprtController', ['$scope', 'BeerXprtService', function ($scope, BeerXprtService) {
     $scope.imgUrl = 'images/rolling_blue.gif';
     $scope.resetMessage = '';
+    $scope.lastUsed = [];
 
     BeerXprtService.getNextBeer(function (error, beer) {
         if (error) {
@@ -10,6 +11,9 @@ app.controller('BeerXprtController', ['$scope', 'BeerXprtService', function ($sc
             $scope.imgUrl = beer.image_url == null ? 'images/product-img-placeholder.png' : beer.image_url;
             $scope.name = beer.name;
         }
+        BeerXprtService.getLast10(function(error, beers){
+            $scope.lastUsed = beers;
+        });
     });
 
     $scope.resetUsedBeers = function(){

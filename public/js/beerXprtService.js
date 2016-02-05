@@ -22,4 +22,12 @@ app.service('BeerXprtService', function ($http) {
             callback(error, null);
         });
     }
+
+    this.getLast10 = function(callback){
+        $http.get('/beers/used?last=10').then(function (response) {
+            callback(null, response);
+        }, function (error) {
+            callback(error, null);
+        });
+    }
 });
