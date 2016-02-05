@@ -1,22 +1,25 @@
 <html ng-app="beerXprtApp">
-    <head>
-        <title>BeerXprt</title>
-        <link rel="stylesheet" href="lib/bootstrap-3.3.6-dist/css/bootstrap.min.css"/>
-        <link rel="stylesheet" href="stylesheets/style.css"/>
-        <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
-    </head>
-    <body>
-        <h1>Hey, you want a beer? Try this one:</h1>
-
-        <div ng-controller="BeerXprtController">
-            <img src={{imgUrl}} class="product-img"/><br/>
-            <span class="product-name">{{name}}</span><br/><br/>
-            <button ng-click="resetUsedBeers()">Reset Used Beers</button>&nbsp;&nbsp;&nbsp;
-            <span>{{resetMessage}}</span>
-        </div>
-
-        <script src="js/beerXprtApp.js"></script>
-        <script src="js/beerXprtController.js"></script>
-        <script src="js/beerXprtService.js"></script>
-    </body>
+<head>
+    <title>BeerXprt</title>
+    <link rel="stylesheet" href="lib/bootstrap-3.3.6-dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="stylesheets/style.css"/>
+    <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+</head>
+<body class="container-fluid">
+<div class="page-header">
+    <h1>Hey, you want a beer? Try this one:</h1>
+</div>
+<div class="center-block main-content">
+    <div ng-controller="BeerXprtController">
+        <img src={{imgUrl}} class="product-img center-block"/><br/>
+        <p class="product-name text-center">{{name}}</p><br/>
+        <button ng-click="resetUsedBeers()" class="btn btn-primary center-block">Reset Used Beers</button>
+        &nbsp;&nbsp;&nbsp;
+        <span>{{resetMessage}}</span>
+    </div>
+</div>
+<script src="js/beerXprtApp.js"></script>
+<script src="js/beerXprtController.js"></script>
+<script src="js/beerXprtService.js"></script>
+</body>
 </html>

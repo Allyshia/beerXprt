@@ -9,8 +9,16 @@ a {
 }
 */
 
+h1 {
+  font-size: 2em;
+}
+
+.main-content {
+  width: 800px;
+}
+
 .product-img {
-  max-height: 400px;
+  max-height: 300px;
 }
 
 .product-name {

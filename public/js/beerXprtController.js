@@ -1,5 +1,5 @@
 app.controller('BeerXprtController', ['$scope', 'BeerXprtService', function ($scope, BeerXprtService) {
-    $scope.imgUrl = 'images/rolling.gif';
+    $scope.imgUrl = 'images/rolling_blue.gif';
     $scope.resetMessage = '';
 
     BeerXprtService.getNextBeer(function (error, beer) {
